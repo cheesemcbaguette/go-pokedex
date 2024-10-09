@@ -1,52 +1,40 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"pokedex/internal/pokeapi"
 )
 
-func commandMap(cfg *config) error {
-	url := "https://pokeapi.co/api/v2/location-area/"
-	if cfg.Next != nil {
-		url = *cfg.Next
-	}
-
-	locationAreas, err := pokeapi.FetchLocationAreas(url)
+func commandMapf(cfg *config) error {
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationsURL)
 	if err != nil {
 		return err
 	}
 
-	// Print the location names
-	for _, location := range locationAreas.Results {
-		fmt.Println(location.Name)
+	cfg.nextLocationsURL = locationsResp.Next
+	cfg.prevLocationsURL = locationsResp.Previous
+
+	for _, loc := range locationsResp.Results {
+		fmt.Println(loc.Name)
 	}
-
-	// Update the Next and Previous URLs in the config
-	cfg.Next = locationAreas.Next
-	cfg.Previous = locationAreas.Previous
-
 	return nil
 }
 
 func commandMapb(cfg *config) error {
-	if cfg.Previous == nil {
-		fmt.Println("No previous page available.")
-		return nil
+	if cfg.prevLocationsURL == nil {
+		return errors.New("you're on the first page")
 	}
 
-	locationAreas, err := pokeapi.FetchLocationAreas(*cfg.Previous)
+	locationResp, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationsURL)
 	if err != nil {
 		return err
 	}
 
-	// Print the location names
-	for _, location := range locationAreas.Results {
-		fmt.Println(location.Name)
+	cfg.nextLocationsURL = locationResp.Next
+	cfg.prevLocationsURL = locationResp.Previous
+
+	for _, loc := range locationResp.Results {
+		fmt.Println(loc.Name)
 	}
-
-	// Update the Next and Previous URLs in the config
-	cfg.Next = locationAreas.Next
-	cfg.Previous = locationAreas.Previous
-
 	return nil
 }
